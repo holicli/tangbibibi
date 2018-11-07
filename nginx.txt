@@ -1,0 +1,276 @@
+1.pcre问题
+ In file included fromsrc/core/ngx_core.h:72:0,
+
+                 from src/core/nginx.c:9:
+
+src/core/ngx_regex.h:15:18: fatal error:pcre.h: No such file or directory
+
+ #include <pcre.h>
+
+ 
+
+ 解决方案:
+
+yum installpcre-devel 这个是重写模块必须的
+
+非常感谢各位的回答，当时只安装了pcre库，没安装pcre-devel 问题解决了，谢谢各位
+
+ 
+
+2.openssl版本错误
+home/webrtc/live/zlib/ -I objs \
+
+       -oobjs/src/event/ngx_event_openssl.o \
+
+       src/event/ngx_event_openssl.c
+
+src/event/ngx_event_openssl.c: In function‘ngx_ssl_dhparam’:
+
+src/event/ngx_event_openssl.c:954:11:error: dereferencing pointer to incomplete type
+
+        dh->p = BN_bin2bn(dh1024_p, sizeof(dh1024_p), NULL);
+
+          ^
+
+src/event/ngx_event_openssl.c:955:11:error: dereferencing pointer to incomplete type
+
+        dh->g = BN_bin2bn(dh1024_g, sizeof(dh1024_g), NULL);
+
+          ^
+
+src/event/ngx_event_openssl.c:957:15:error: dereferencing pointer to incomplete type
+
+        if (dh->p == NULL || dh->g == NULL) {
+
+               ^
+
+src/event/ngx_event_openssl.c:957:32:error: dereferencing pointer to incomplete type
+
+        if (dh->p == NULL || dh->g == NULL) {
+
+                                ^
+
+src/event/ngx_event_openssl.c: In function‘ngx_ssl_connection_error’:
+
+src/event/ngx_event_openssl.c:1941:21:error: ‘SSL_R_NO_CIPHERS_PASSED’ undeclared (first use in this function)
+
+            || n == SSL_R_NO_CIPHERS_PASSED                          /*  182 */
+
+                     ^
+
+src/event/ngx_event_openssl.c:1941:21:note: each undeclared identifier is reported only once for each function itappears in
+
+make[1]: ***[objs/src/event/ngx_event_openssl.o] Error 1
+
+make[1]: Leaving directory`/usr/local/nginx'
+
+make: *** [build] Error 2
+
+ 
+
+ 
+
+解决方案
+
+The OpenSSL API has changed quite a bit in 1.1.0... thismeans that nginx needs some work to adapt. I recommend you talk with the nginxfolks.
+
+ 
+
+替换openssl的包为1.0.1的版本
+
+ 
+
+ 
+
+3.pcre版本错误
+cd /home/webrtc/live/pcre \
+
+&& make libpcre.la
+
+make[2]: Entering directory`/home/webrtc/live/pcre'
+
+make[2]: *** No rule to make target `libpcre.la'.  Stop.
+
+make[2]: Leaving directory`/home/webrtc/live/pcre'
+
+make[1]: ***[/home/webrtc/live/pcre/.libs/libpcre.a] Error 2
+
+make[1]: Leaving directory`/usr/local/nginx'
+
+make: *** [build] Error 2
+
+ 
+
+解决方案：
+
+pcre2-10.20.tar.gz
+
+切换到pcre-8.39.tar.bz2版本
+
+ 
+
+ 
+
+ 
+
+ 
+
+4.make install错误
+[root@localhost nginx]# make install
+
+make -f objs/Makefile install
+
+make[1]: Entering directory`/usr/local/nginx'
+
+test -d '/usr/local/nginx' || mkdir -p'/usr/local/nginx'
+
+test -d '/usr/local/nginx/sbin' \
+
+       ||mkdir -p '/usr/local/nginx/sbin'
+
+test ! -f '/usr/local/nginx/sbin/nginx' \
+
+       ||mv '/usr/local/nginx/sbin/nginx' \
+
+              '/usr/local/nginx/sbin/nginx.old'
+
+cp objs/nginx '/usr/local/nginx/sbin/nginx'
+
+test -d '/usr/local/nginx/conf' \
+
+       ||mkdir -p '/usr/local/nginx/conf'
+
+cp conf/koi-win '/usr/local/nginx/conf'
+
+cp: ‘conf/koi-win’ and‘/usr/local/nginx/conf/koi-win’ are the same file
+
+make[1]: *** [install] Error 1
+
+make[1]: Leaving directory`/usr/local/nginx'
+
+make: *** [install] Error 2
+
+[root@localhost nginx]# mv /usr/local/nginx
+
+mv: missing destination file operand after‘/usr/local/nginx’
+
+Try 'mv --help' for more information.
+
+ 
+
+ 
+
+解决方案：
+
+nginx源码包目录和安装目录(配置的)，产生了冲突
+
+ 
+
+把nginx源码包从/usr/local/nginx  拷贝到/home/username/nginx
+
+重新makeinstall
+
+ 
+
+5.nginx reload出错
+ 
+
+[root@localhost sbin]# ./nginx -s reload
+
+nginx: [error] open()"/usr/local/nginx/logs/nginx.pid" failed (2: No such file ordirectory)
+
+ 
+
+ 
+
+解决方案
+
+[root@localhostsbin]# ./nginx -c /usr/local/nginx/conf/nginx.conf
+
+//查看文件是否存在
+
+[root@localhostsbin]# ls /usr/local/nginx/logs/
+
+access.log  error.log nginx.pid
+
+ 
+
+使用nginx -c的参数指定nginx.conf文件的位置
+
+
+1. post方法请求静态文件
+默认情况下，web服务器都不允许post方法请求静态文件，会返回响应403 Not Allowed。但是有些时候确实有这种需求。可以通过配置文件来改变这种设置：在需要处理静态文件的location里这样配置即可，
+location /static/ {
+    root /path/to/files/;
+    error_page 405 =200 $uri;
+}
+2. Nginx默认一次只能发送50个子请求（subrequest）
+在nginx源码中，src/http/ngx_http_request.h文件中：
+#define NGX_HTTP_MAX_SUBREQUESTS        50
+在使用Openresty时，可以向configure脚本传参设置这个限制， ./configure --with-cc-opt="-D NGX_HTTP_MAX_SUBREQUESTS=250"
+3. Nginx location匹配规则
+匹配顺序：
+a. 字符串匹配，和location块的顺序无关，根据uri匹配所有的location，从而得到一个匹配度最大的location。
+b. 正则匹配，按照location块的顺序从前向后，如果找到匹配的location，则直接由该location处理请求。如果所有的location都不匹配，则由在字符串匹配中，匹配度最大的location处理。
+匹配规则：
+= /uri/   ——字符串精确匹配
+^~ /uri/ ——字符串前缀匹配
+~ /uri/   ——大小写区分的正则匹配
+~* /uri/ ——大小写不区分的正则匹配
+@ /uri/ ——命名location，只用于内部重定向请求
+其中，如果=和^~匹配成功之后会立即停止搜索，即不再进行正则匹配。
+4. 监控Nginx的状态
+需要HttpStubStatusModule模块，默认情况是不开启的，所以需要编译时，指定开启这个模块。
+./configure --with-http_stub_status_modules
+nginx的配置：
+location /nginx_status {
+  # copied from http://blog.kovyrin.net/2006/04/29/monitoring-nginx-with-rrdtool/
+  stub_status on;
+  access_log   off;
+  allow SOME.IP.ADD.RESS;
+  deny all;
+}
+然后通过浏览器访问localhost/nginx_status，浏览器显示Nginx的状态
+Active connections: 291
+server accepts handled requests
+  16630948 16630948 31070465
+Reading: 6 Writing: 179 Waiting: 106
+5. Nginx启用aio
+默认Nginx是没有开启aio的，需要在配置编译时，加上相应选项否则启动Nginx会报错unknown directive “aio”。
+./configure --with-file-aio
+6. 限制请求内容的大小
+指令：client_max_body_size，用于设置这个值，默认是1m。context可以是http，server或者location。
+7. 通过echo模块合并静态文件请求
+正常html中包含多个js文件或者css文件，那么浏览器需要多次http请求才能完成这些文件的加载。比如html文件：
+<html>
+<head>
+    <script type='text/javascript' src='/static/a.js'></script>
+    <script type='text/javascript' src='/static/b.js'></script>
+    <script type='text/javascript' src='/static/c.js'></script>
+……
+</html>
+那么就需要3次请求。下面介绍echo模块实现请求合并。先修改html：
+<html>
+<head>
+    <script type='text/javascript' src='/merge?/static/a.js&/static/b.js&/static/c.js'></script>
+……
+</html>
+nginx配置文件：
+location /static/ {
+    root /home/www/doc_root;
+}
+
+location /merge {
+    default_type 'text/javascript';
+
+    echo_foreach_split '&' $query_string;    # 将查询字符串以&分割
+        echo_location_async $echo_it;        # 发送子请求到$echo_it对应的location
+        echo;
+    echo_end;
+}
+通过这种方式可以有效减少客户端请求，降低服务器端的压力。
+8. nginx开启gzip
+gzip    on;    # 开启gzip，默认关闭
+gzip_comp_level    5;    # 压缩级别，1-9，级别越高压缩率越高，但是相应的耗cpu
+gzip_min_length    1025;    # 当响应内容大小大于多少bytes后使用gzip
+gzip_types    text/plain application/x-javascript application/json text/javascript text/css    # 对于什么类型的内容使用gzip
